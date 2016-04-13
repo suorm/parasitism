@@ -1,0 +1,52 @@
+to go
+	go-nests
+	go-eggs
+	go-hosts
+	go-parasitic-eggs
+	go-parasites
+	tick
+	if
+	(not any? hosts and not any? eggs) or
+	(not any? parasites and not any? parasitic-eggs) or
+	(count hosts >= 20000) or
+	(count parasites >= 20000) or
+	(ticks >= 100000)
+	[
+		stop
+	]
+end
+
+to go-nests
+	ask nests
+	[
+		nest-operate
+	]
+end
+
+to go-eggs
+	ask eggs
+	[
+		egg-operate
+	]
+end
+
+to go-hosts
+	ask hosts
+	[
+		host-operate
+	]
+end
+
+to go-parasitic-eggs
+	ask parasitic-eggs
+	[
+		parasitic-egg-operate
+	]
+end
+
+to go-parasites
+	ask parasites
+	[
+		parasite-operate
+	]
+end

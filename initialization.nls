@@ -1,0 +1,153 @@
+to setup
+	clear-all
+	reset-ticks
+	;setup classes
+	setup-environment
+	setup-nests
+	setup-eggs
+	setup-hosts
+	setup-parasites
+	;create initial objects
+	initialize-simulation
+end
+
+to setup-environment
+	set var-mutation-chance init-var-mutation-chance
+	set var-seed init-var-seed
+	random-seed var-seed
+end
+
+to setup-nests
+	set var-num-nests init-var-num-nests
+	set var-num-nest-features init-var-num-nest-features
+	set var-nest-occupation-time init-var-nest-occupation-time
+	set var-nest-deterioration-time init-var-nest-deterioration-time
+end
+
+to setup-eggs
+	set var-num-egg-features init-var-num-egg-features
+	set var-egg-incubation-time init-var-egg-incubation-time
+end
+
+to setup-hosts
+	set var-host-learning-time init-var-host-learning-time
+	set var-host-maturity-time init-var-host-maturity-time
+	set var-host-death-time init-var-host-death-time
+	set var-host-reproduction-cycle init-var-host-reproduction-cycle
+	set var-host-step-size init-var-host-step-size
+	set var-host-steering-amount init-var-host-steering-amount
+	set var-host-tolerance init-var-host-tolerance
+end
+
+to setup-parasites
+	;some hosts will become parasites
+	set var-parasite-percentage init-parasite-percentage
+	;parasites have the same attributes as hosts
+	set var-parasite-learning-time init-var-host-learning-time
+	set var-parasite-maturity-time init-var-host-maturity-time
+	set var-parasite-death-time init-var-host-death-time
+	set var-parasite-reproduction-cycle init-var-host-reproduction-cycle
+	set var-parasite-step-size init-var-host-step-size
+	set var-parasite-steering-amount init-var-host-steering-amount
+	set var-parasite-tolerance init-var-host-tolerance
+	;parasites have these extra attributes for searching a nest to parasitize
+	set var-parasite-vision-radius init-var-parasite-vision-radius
+	set var-parasite-vision-angle init-var-parasite-vision-angle
+end
+
+to initialize-simulation
+	;make nests
+	let my-nest-occupation-time var-nest-occupation-time
+	let my-nest-deterioration-time var-nest-deterioration-time
+	ask n-of var-num-nests patches ;assume patches > var-num-nests
+	[
+		sprout-nests 1
+		[
+			set shape "leaf"
+			set color brown
+			set nest-state "creation"
+			set nest-type reduce sentence (n-values var-num-nest-features [ random 2 ]) ;nests have different types
+			set nest-occupation-time my-nest-occupation-time
+			set nest-deterioration-time my-nest-deterioration-time
+		]
+	]
+	;make eggs
+	let my-egg-type reduce sentence (n-values var-num-egg-features [ random 2 ]) ;eggs have same type
+	let my-egg-incubation-time var-egg-incubation-time
+	let my-egg-host-learning-time var-host-learning-time
+	let my-egg-host-maturity-time var-host-maturity-time
+	let my-egg-host-death-time var-host-death-time
+	let my-egg-host-reproduction-cycle var-host-reproduction-cycle
+	let my-egg-host-step-size var-host-step-size
+	let my-egg-host-steering-amount var-host-steering-amount
+	let my-egg-host-tolerance var-host-tolerance
+	ask nests
+	[
+		;all nests start simultaneously and all eggs begin at their creation phase
+		hatch-eggs 1
+		[
+			set shape "egg"
+			set color white
+			ifelse (genesis-mode-switch)
+			[
+				set egg-state "creation"
+			]
+			[
+				set egg-timer floor (abs (random-normal (my-egg-incubation-time / 2) (my-egg-incubation-time / 4)))
+				set egg-state "incubation"
+			]
+			set egg-type my-egg-type
+			set egg-incubation-time my-egg-incubation-time
+			set egg-host-learning-time my-egg-host-learning-time
+			set egg-host-maturity-time my-egg-host-maturity-time
+			set egg-host-death-time my-egg-host-death-time
+			set egg-host-reproduction-cycle my-egg-host-reproduction-cycle
+			set egg-host-step-size my-egg-host-step-size
+			set egg-host-steering-amount my-egg-host-steering-amount
+			set egg-host-tolerance my-egg-host-tolerance
+			create-nest-egg-link-with myself
+			[
+				hide-link
+			]
+		]
+	]
+	;make parasitic-eggs
+	let my-egg-parasite-learning-time var-parasite-learning-time
+	let my-egg-parasite-maturity-time var-parasite-maturity-time
+	let my-egg-parasite-death-time var-parasite-death-time
+	let my-egg-parasite-reproduction-cycle var-parasite-reproduction-cycle
+	let my-egg-parasite-step-size var-parasite-step-size
+	let my-egg-parasite-steering-amount var-parasite-steering-amount
+	let my-egg-parasite-tolerance var-parasite-tolerance
+	let my-egg-parasite-vision-radius var-parasite-vision-radius
+	let my-egg-parasite-vision-angle var-parasite-vision-angle
+	ask n-of (int ((var-parasite-percentage / 100) * count eggs)) eggs
+	[
+		set breed parasitic-eggs
+		;this resets the egg attributes so we must restore them
+		set shape "egg"
+		set color green
+		ifelse (genesis-mode-switch)
+		[
+			set egg-state "creation"
+			set egg-parasite-reproduction-cycle (my-egg-parasite-reproduction-cycle + 1)
+		]
+		[
+			set egg-state "incubation"
+			set egg-timer (random my-egg-incubation-time)
+			set egg-parasite-reproduction-cycle my-egg-host-reproduction-cycle
+		]
+		set egg-type my-egg-type
+		set egg-incubation-time my-egg-incubation-time
+		;parasitic eggs have attributes like hosts' eggs
+		set egg-parasite-learning-time my-egg-parasite-learning-time
+		set egg-parasite-maturity-time my-egg-parasite-maturity-time
+		set egg-parasite-death-time my-egg-parasite-death-time
+		set egg-parasite-step-size my-egg-parasite-step-size
+		set egg-parasite-steering-amount my-egg-parasite-steering-amount
+		set egg-parasite-tolerance my-egg-parasite-tolerance
+		;and attributes that are unique to parasites
+		set egg-parasite-vision-radius my-egg-parasite-vision-radius
+		set egg-parasite-vision-angle my-egg-parasite-vision-angle
+	]
+end

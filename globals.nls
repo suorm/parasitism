@@ -1,0 +1,37 @@
+globals
+[
+	;Environment
+	var-seed
+	var-mutation-chance
+
+	;Nests
+	var-num-nests
+	var-num-nest-features
+	var-nest-occupation-time
+	var-nest-deterioration-time
+
+	;Eggs
+	var-num-egg-features
+	var-egg-incubation-time
+
+	;Hosts
+	var-host-learning-time
+	var-host-maturity-time
+	var-host-death-time
+	var-host-reproduction-cycle
+	var-host-step-size
+	var-host-steering-amount
+	var-host-tolerance
+
+	;Parasites
+	var-parasite-percentage
+	var-parasite-learning-time
+	var-parasite-maturity-time
+	var-parasite-death-time
+	var-parasite-reproduction-cycle
+	var-parasite-step-size
+	var-parasite-steering-amount
+	var-parasite-tolerance
+	var-parasite-vision-radius
+	var-parasite-vision-angle
+]

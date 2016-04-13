@@ -1,0 +1,110 @@
+breed
+[
+	eggs
+	egg
+]
+
+eggs-own
+[
+	egg-timer
+	egg-state ;creation, incubation, destruction
+
+	egg-type ;bitstring
+	egg-incubation-time
+
+	egg-host-learning-time
+	egg-host-maturity-time
+	egg-host-death-time
+	egg-host-reproduction-cycle
+	egg-host-step-size
+	egg-host-steering-amount
+	egg-host-tolerance
+]
+
+to egg-operate
+	;egg-layout
+	ifelse (egg-state = "creation")
+	[
+		egg-act-created
+	]
+	[
+		ifelse (egg-state = "incubation")
+		[
+			egg-act-incubated
+		]
+		[
+			ifelse (egg-state = "destruction")
+			[
+				egg-act-destroyed
+			]
+			[
+				;everything else
+			]
+		]
+	]
+end
+
+to egg-layout
+	layout-spring eggs nest-egg-links 1 0 1
+end
+
+to egg-act-created
+	;visuals
+	set shape "egg"
+	set color white
+	;logic
+	set egg-timer 0
+	set egg-state "incubation"
+end
+
+to egg-act-incubated
+	;visuals?
+	;logic
+	ifelse (egg-timer < egg-incubation-time)
+	[
+		set egg-timer (egg-timer + 1)
+		set egg-state "incubation"
+	]
+	[
+		set egg-timer 0
+		set egg-state "destruction"
+		egg-crack
+	]
+end
+
+to egg-act-destroyed
+	die
+end
+
+to egg-crack
+	let my-egg-type (reduce sentence egg-type)
+	let my-egg-incubation-time egg-incubation-time
+	let my-host-learning-time egg-host-learning-time
+	let my-host-maturity-time egg-host-maturity-time
+	let my-host-death-time egg-host-death-time
+	let my-host-reproduction-cycle egg-host-reproduction-cycle
+	let my-host-step-size egg-host-step-size
+	let my-host-steering-amount egg-host-steering-amount
+	let my-host-tolerance egg-host-tolerance
+	ask nest-egg-link-neighbors
+	[
+		hatch-hosts 1
+		[
+			set host-state "creation"
+			set host-egg-type my-egg-type
+			set host-egg-incubation-time my-egg-incubation-time
+			set host-learning-time my-host-learning-time
+			set host-maturity-time my-host-maturity-time
+			set host-death-time my-host-death-time
+			set host-reproduction-cycle my-host-reproduction-cycle
+			set host-step-size my-host-step-size
+			set host-steering-amount my-host-steering-amount
+			set host-tolerance my-host-tolerance
+			set host-parent? false
+			create-nest-host-link-with myself 
+			[
+				hide-link
+			]
+		]
+	]
+end

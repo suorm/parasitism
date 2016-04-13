@@ -1,0 +1,436 @@
+breed
+[
+	parasites
+	parasite
+]
+
+parasites-own
+[
+	parasite-timer
+	parasite-state
+
+	;set by an incubated egg
+	;egg facts
+	parasite-egg-type
+	parasite-egg-incubation-time
+
+	;parasite facts
+	parasite-learning-time
+	parasite-maturity-time
+	parasite-death-time
+	parasite-reproduction-cycle
+	parasite-step-size
+	parasite-steering-amount
+	parasite-tolerance
+
+	;parasite exclusives
+	parasite-vision-radius
+	parasite-vision-angle
+
+	;nest beliefs
+	parasite-my-nest-belief ;which nest is the host's
+	parasite-my-nest-type-belief ;what is the type of the host's nest
+	parasite-my-nest-occupation-time-belief
+	parasite-my-nest-deterioration-time-belief
+
+	;nest rankings
+	parasite-nests-ranking
+]
+
+to parasite-operate
+	ifelse (parasite-state = "creation")
+	[
+		;creation code
+		parasite-act-created
+	]
+	[
+		ifelse (parasite-state = "learning")
+		[
+			;learning code
+			parasite-act-learning
+		]
+		[
+			ifelse (parasite-state = "maturity")
+			[
+				;maturity code
+				parasite-act-mature
+			]
+			[
+				ifelse (parasite-state = "destruction")
+				[
+					;destruction code
+					parasite-act-destroyed
+				]
+				[
+					;everything else
+				]
+			]
+		]
+	]
+end
+
+to parasite-act-created
+	;visuals
+	set color red
+	set shape "bird"
+	;logic
+	set parasite-timer 0
+	set parasite-state "learning"
+end
+
+to parasite-act-learning
+	;visuals
+	;logic
+	ifelse (parasite-timer < parasite-learning-time)
+	[
+		set parasite-timer (parasite-timer + 1)
+		set parasite-state "learning"
+		ask nest-parasite-link-neighbors
+		[
+			set nest-timer 0
+		]
+	]
+	[
+		set parasite-timer 0
+		set parasite-state "maturity"
+		;learn type of nest
+		parasite-learn-nest-type
+	]
+end
+
+to parasite-act-mature
+	;visuals
+	;logic
+	ifelse (parasite-timer < parasite-maturity-time)
+	[
+		set parasite-timer (parasite-timer + 1)
+		set parasite-state "maturity"
+		ifelse (parasite-timer mod parasite-reproduction-cycle = 0)
+		[
+			;parasitize
+			parasite-lay-egg
+		]
+		[
+			;search
+			parasite-random-walk
+		]
+		;tolerance changes with every tick
+		if (rw-parasite-tolerance-switch)
+		[
+			rw-parasite-tolerance
+		]
+	]
+	[
+		set parasite-timer 0
+		set parasite-state "destruction"
+	]
+end
+
+to parasite-act-destroyed
+	;visuals
+	;logic
+	ifelse (parasite-timer < parasite-death-time)
+	[
+		set parasite-timer (parasite-timer + 1)
+		set parasite-state "destruction"
+		;death walk
+		if (parasite-step-size > 0)
+		[
+			set parasite-step-size (parasite-step-size - 1)
+		]
+		if (parasite-steering-amount > 0)
+		[
+			set parasite-steering-amount (parasite-steering-amount - 1)
+		]
+		parasite-random-walk
+	]
+	[
+		die
+	]
+end
+
+to parasite-random-walk
+	rt floor random (parasite-steering-amount / 2)
+	lt floor random (parasite-steering-amount / 2)
+	fd parasite-step-size
+	;set parasite-nests-ranking min-one-of nests [ distance myself ] with [ nest-current-number-of-eggs > 0 ]
+	let nests-within-sight nests in-cone parasite-vision-radius parasite-vision-angle
+	ask nests-within-sight
+	[
+		create-nest-parasite-link-with myself
+		[
+			hide-link
+		]
+	]
+end
+
+to parasite-lay-egg
+	;mutate
+	parasite-egg-mutate
+	;prepare egg
+	let my-egg-type parasite-egg-type
+	let my-egg-incubation-time parasite-egg-incubation-time
+	let my-egg-parasite-learning-time parasite-learning-time
+	let my-egg-parasite-maturity-time parasite-maturity-time
+	let my-egg-parasite-death-time parasite-death-time
+	let my-egg-parasite-reproduction-cycle parasite-reproduction-cycle
+	let my-egg-parasite-step-size parasite-step-size
+	let my-egg-parasite-steering-amount parasite-steering-amount
+	let my-egg-parasite-tolerance parasite-tolerance
+	let my-egg-parasite-vision-radius parasite-vision-radius
+	let my-egg-parasite-vision-angle parasite-vision-angle
+	;target nests
+	let my-nest-type-belief parasite-my-nest-type-belief
+	let target-nests nest-parasite-link-neighbors with [ (parasite-compare-similar nest-type my-nest-type-belief my-egg-parasite-tolerance) = true ]
+	if any? target-nests with [ nest-current-number-of-eggs > 0 ]
+	[
+		;ask n-of random (count target-nests) target-nests
+		carefully
+		[
+			ask n-of 2 target-nests with [ nest-current-number-of-eggs > 0 ]
+			[
+				;lay the parasitic egg
+				ask nest-egg-link-neighbors
+				[
+					set breed parasitic-eggs
+					;this resets the variables
+					set shape "egg"
+					set color green
+					set egg-state "creation"
+					set egg-type my-egg-type
+					set egg-incubation-time my-egg-incubation-time
+					set egg-parasite-learning-time my-egg-parasite-learning-time
+					set egg-parasite-maturity-time my-egg-parasite-maturity-time
+					set egg-parasite-death-time my-egg-parasite-death-time
+					set egg-parasite-reproduction-cycle my-egg-parasite-reproduction-cycle
+					set egg-parasite-step-size my-egg-parasite-step-size
+					set egg-parasite-steering-amount my-egg-parasite-steering-amount
+					set egg-parasite-tolerance my-egg-parasite-tolerance
+					set egg-parasite-vision-radius my-egg-parasite-vision-radius
+					set egg-parasite-vision-angle my-egg-parasite-vision-angle
+				]
+			]
+		]
+		[
+			ask n-of 1 target-nests with [ nest-current-number-of-eggs > 0 ]
+			[
+				;lay the parasitic egg
+				ask nest-egg-link-neighbors
+				[
+					set breed parasitic-eggs
+					;this resets the variables
+					set shape "egg"
+					set color green
+					set egg-state "creation"
+					set egg-type my-egg-type
+					set egg-incubation-time my-egg-incubation-time
+					set egg-parasite-learning-time my-egg-parasite-learning-time
+					set egg-parasite-maturity-time my-egg-parasite-maturity-time
+					set egg-parasite-death-time my-egg-parasite-death-time
+					set egg-parasite-reproduction-cycle my-egg-parasite-reproduction-cycle
+					set egg-parasite-step-size my-egg-parasite-step-size
+					set egg-parasite-steering-amount my-egg-parasite-steering-amount
+					set egg-parasite-tolerance my-egg-parasite-tolerance
+					set egg-parasite-vision-radius my-egg-parasite-vision-radius
+					set egg-parasite-vision-angle my-egg-parasite-vision-angle
+				]
+			]
+		]
+	]
+end
+
+to parasite-learn-nest-type
+	let my-nest-type-belief reduce sentence ([ nest-type ] of nest-parasite-link-neighbors)
+	let my-nest-occupation-time-belief first ([ nest-deterioration-time ] of nest-parasite-link-neighbors)
+	let my-nest-deterioration-time-belief first ([ nest-occupation-time ] of nest-parasite-link-neighbors)
+	set parasite-my-nest-type-belief my-nest-type-belief
+	set parasite-my-nest-occupation-time-belief my-nest-occupation-time-belief
+	set parasite-my-nest-deterioration-time-belief my-nest-deterioration-time-belief
+end
+
+to parasite-egg-mutate
+	;mutate egg type
+	if (rw-parasite-egg-type-switch)
+	[
+		set parasite-egg-type reduce sentence (map [ifelse-value (random-float 1.0 < var-mutation-chance) [1 - ?] [?]] parasite-egg-type)
+	]
+	;mutate egg incubation time
+	if (rw-parasite-egg-incubation-time-switch)
+	[
+		ifelse (random-float 1.0 < var-mutation-chance)
+		[
+			ifelse (parasite-egg-incubation-time > 0)
+			[
+				set parasite-egg-incubation-time (parasite-egg-incubation-time + (one-of [1 -1]))
+			]
+			[
+				set parasite-egg-incubation-time 1
+			]
+		]
+		[
+			;do nothing
+		]
+	]
+	;mutate parasite maturity time
+	if (rw-parasite-maturity-time-switch)
+	[
+		ifelse (random-float 1.0 < var-mutation-chance)
+		[
+			ifelse (parasite-maturity-time > 0)
+			[
+				set parasite-maturity-time (parasite-maturity-time + (one-of [1 -1]))
+			]
+			[
+				set host-maturity-time 1
+			]
+		]
+		[
+			;do nothing
+		]
+	]
+	;mutate parasite reproduction cycle
+	if (rw-parasite-reproduction-cycle-switch)
+	[
+		ifelse (random-float 1.0 < var-mutation-chance)
+		[
+			ifelse (parasite-reproduction-cycle > 0)
+			[
+				set parasite-reproduction-cycle (parasite-reproduction-cycle + (one-of [1 -1]))
+			]
+			[
+				set parasite-reproduction-cycle 1
+			]
+		]
+		[
+			;do nothing
+		]
+	]
+	;mutate parasite step size
+	if (rw-parasite-step-size-switch)
+	[
+		ifelse (random-float 1.0 < var-mutation-chance)
+		[
+			ifelse (parasite-step-size > 0)
+			[
+				set parasite-step-size (parasite-step-size + (one-of [1 -1]))
+			]
+			[
+				set parasite-step-size 1
+			]
+		]
+		[
+			;do nothing
+		]
+	]
+	;mutate parasite vision radius
+	if (rw-parasite-vision-radius-switch)
+	[
+		ifelse (random-float 1.0 < var-mutation-chance)
+		[
+			ifelse (parasite-vision-radius > 0 and parasite-vision-radius <= world-width)
+			[
+				set parasite-vision-radius (parasite-vision-radius + (one-of [1 -1]))
+			]
+			[
+				ifelse (parasite-vision-radius <= 0)
+				[
+					set parasite-vision-radius 1
+				]
+				[
+					;do nothing
+				]
+				ifelse (parasite-vision-radius >= world-width)
+				[
+					set parasite-vision-radius (world-width - 1)
+				]
+				[
+					;do nothing
+				]
+			]
+		]
+		[
+			;do nothing
+		]
+	]
+	;mutate parasite vision angle
+	if (rw-parasite-vision-angle-switch)
+	[
+		ifelse (random-float 1.0 < var-mutation-chance)
+		[
+			ifelse (parasite-vision-angle > 0 and parasite-vision-angle <= 360)
+			[
+				set parasite-vision-angle (parasite-vision-angle + (one-of [1 -1]))
+			]
+			[
+				ifelse (parasite-vision-angle <= 0)
+				[
+					set parasite-vision-angle 1
+				]
+				[
+					;do nothing
+				]
+				ifelse (parasite-vision-angle >= 360)
+				[
+					set parasite-vision-angle 359
+				]
+				[
+					;do nothing
+				]
+			]
+		]
+		[
+			;do nothing
+		]
+	]
+end
+
+to rw-parasite-tolerance
+	ifelse (random-float 1.0 < var-mutation-chance)
+	[
+		ifelse (parasite-tolerance > 0 and parasite-tolerance <= length parasite-my-nest-type-belief)
+		[
+			set parasite-tolerance (parasite-tolerance + (one-of [1 -1]))
+		]
+		[
+			ifelse (parasite-tolerance <= 0)
+			[
+				set parasite-tolerance 1
+			]
+			[
+				set parasite-tolerance (length parasite-my-nest-type-belief)
+			]
+		]
+	]
+	[
+		;do nothing
+	]
+end
+
+to-report parasite-compare-similar [item1 belief1 tolerance]
+	ifelse ((parasite-hamming item1 belief1) <= tolerance)
+	[
+		report true
+	]
+	[
+		report false
+	]
+end
+
+to-report parasite-hamming [item1 item2]
+	report (length remove true (map [?1 = ?2] item1 item2))
+end
+
+to-report parasite-diversity
+	let parasite-distances []
+	ask parasites
+	[
+		let my-egg-type parasite-egg-type
+		ask parasites with [ self > myself ]
+		[
+			set parasite-distances fput (parasite-hamming parasite-egg-type my-egg-type) parasite-distances
+		]
+	]
+	let max-possible-parasite-distance-sum floor (count parasites * count parasites / 4)
+	let diversity (sum parasite-distances) / max-possible-parasite-distance-sum
+	report diversity
+end

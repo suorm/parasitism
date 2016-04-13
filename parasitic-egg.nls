@@ -1,0 +1,115 @@
+breed
+[
+	parasitic-eggs
+	parasitic-egg
+]
+
+parasitic-eggs-own
+[
+	egg-timer
+	egg-state ;creation, incubation, destruction
+
+	egg-type ;bitstring
+	egg-incubation-time
+
+	egg-parasite-learning-time
+	egg-parasite-maturity-time
+	egg-parasite-death-time
+	egg-parasite-reproduction-cycle
+	egg-parasite-step-size
+	egg-parasite-steering-amount
+	egg-parasite-tolerance
+	egg-parasite-vision-radius
+	egg-parasite-vision-angle
+]
+
+to parasitic-egg-operate
+	;parasitic-egg-layout
+	ifelse (egg-state = "creation")
+	[
+		parasitic-egg-act-created
+	]
+	[
+		ifelse (egg-state = "incubation")
+		[
+			parasitic-egg-act-incubated
+		]
+		[
+			ifelse (egg-state = "destruction")
+			[
+				parasitic-egg-act-destroyed
+			]
+			[
+				;everything else
+			]
+		]
+	]
+end
+
+to parasitic-egg-layout
+	layout-spring parasitic-eggs nest-egg-links 1 0 1
+end
+
+to parasitic-egg-act-created
+	;visuals
+	set shape "egg"
+	set color green
+	;logic
+	set egg-timer 0
+	set egg-state "incubation"
+end
+
+to parasitic-egg-act-incubated
+	;visuals?
+	;logic
+	ifelse (egg-timer < egg-incubation-time)
+	[
+		set egg-timer (egg-timer + 1)
+		set egg-state "incubation"
+	]
+	[
+		set egg-timer 0
+		set egg-state "destruction"
+		parasitic-egg-crack
+	]
+end
+
+to parasitic-egg-act-destroyed
+	die
+end
+
+to parasitic-egg-crack
+	let my-egg-type (reduce sentence egg-type) 
+	let my-egg-incubation-time egg-incubation-time
+	let my-parasite-learning-time egg-parasite-learning-time
+	let my-parasite-maturity-time egg-parasite-maturity-time
+	let my-parasite-death-time egg-parasite-death-time
+	let my-parasite-reproduction-cycle egg-parasite-reproduction-cycle
+	let my-parasite-step-size egg-parasite-step-size
+	let my-parasite-steering-amount egg-parasite-steering-amount
+	let my-parasite-tolerance egg-parasite-tolerance
+	let my-parasite-vision-radius egg-parasite-vision-radius
+	let my-parasite-vision-angle egg-parasite-vision-angle
+	ask nest-egg-link-neighbors
+	[
+		hatch-parasites 1
+		[
+			set parasite-state "creation"
+			set parasite-egg-type my-egg-type
+			set parasite-egg-incubation-time my-egg-incubation-time
+			set parasite-learning-time my-parasite-learning-time
+			set parasite-maturity-time my-parasite-maturity-time
+			set parasite-death-time my-parasite-death-time
+			set parasite-reproduction-cycle my-parasite-reproduction-cycle
+			set parasite-step-size my-parasite-step-size
+			set parasite-steering-amount my-parasite-steering-amount
+			set parasite-tolerance my-parasite-tolerance
+			set parasite-vision-radius my-parasite-vision-radius
+			set parasite-vision-angle my-parasite-vision-angle
+			create-nest-parasite-link-with myself 
+			[
+				hide-link
+			]
+		]
+	]
+end

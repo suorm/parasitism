@@ -1,0 +1,115 @@
+breed
+[
+	nests
+	nest
+]
+
+nests-own
+[
+	nest-timer ;int
+	nest-state ;creation, occupation, deterioration, destruction
+	nest-current-number-of-eggs
+
+	;set by hosts
+	nest-type ;bitstring
+	nest-occupation-time ;init-nest-occupation-time
+	nest-deterioration-time ;init-nest-deterioration-time
+]
+
+to nest-operate
+	ifelse (nest-state = "creation")
+	[
+		nest-act-created
+	]
+	[
+		ifelse (nest-state = "occupation")
+		[
+			nest-act-occupied
+		]
+		[
+			ifelse (nest-state = "deterioration")
+			[
+				nest-act-deteriorated
+			]
+			[
+				ifelse (nest-state = "destruction")
+				[
+					nest-act-destroyed
+				]
+				[
+					;everything else
+				]
+			]
+		]
+	]
+	set nest-current-number-of-eggs count nest-egg-link-neighbors
+end
+
+to nest-act-created
+	;visuals
+	set shape "leaf"
+	set color brown
+	;logic
+	set nest-timer 0
+	set nest-state "occupation"
+end
+
+to nest-act-occupied
+	;visuals
+	set shape "leaf"
+	set color brown
+	;logic
+	ifelse (nest-timer < nest-occupation-time)
+	[
+		set nest-timer (nest-timer + 1)
+		set nest-state "occupation"
+	]
+	[
+		set nest-timer 0
+		set nest-state "deterioration"
+	]
+end
+
+to nest-act-deteriorated
+	;visuals
+	set shape "leaf"
+	set color 33
+	;logic
+	ifelse (nest-timer < nest-deterioration-time)
+	[
+		set nest-timer (nest-timer + 1)
+		set nest-state "deterioration"
+	]
+	[
+		set nest-timer 0
+		set nest-state "destruction"
+	]
+end
+
+to nest-act-destroyed
+	;logic
+	ask nest-egg-link-neighbors
+	[
+		die
+	]
+	die
+end
+
+to-report nest-hamming [item1 item2]
+	report (length remove true (map [?1 = ?2] item1 item2))
+end
+
+to-report nest-diversity
+	let nest-distances []
+	ask nests
+	[
+		let my-nest-type nest-type
+		ask nests with [ self > myself ]
+		[
+			set nest-distances fput (nest-hamming nest-type my-nest-type) nest-distances
+		]
+	]
+	let max-possible-nest-distance-sum floor (count nests * count nests / 4)
+	let diversity (sum nest-distances) / max-possible-nest-distance-sum
+	report diversity
+end

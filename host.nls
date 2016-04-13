@@ -1,0 +1,412 @@
+breed
+[
+	hosts
+	host
+]
+
+hosts-own
+[
+	host-timer
+	host-state
+	host-parent?
+
+	;set by an incubated egg
+	;egg facts
+	host-egg-type
+	host-egg-incubation-time
+
+	;host facts
+	host-learning-time
+	host-maturity-time
+	host-death-time
+	host-reproduction-cycle
+	host-step-size
+	host-steering-amount
+	host-tolerance
+
+	;nest beliefs
+	host-my-nest-belief ;which nest is the host's
+	host-my-nest-type-belief ;what is the type of the host's nest
+	host-my-nest-occupation-time-belief
+	host-my-nest-deterioration-time-belief
+
+	;egg beliefs
+	host-my-egg-type-belief ;used for discrimination against parasitic eggs
+	host-my-egg-incubation-time-belief
+]
+
+to host-operate
+	ifelse (host-state = "creation")
+	[
+		;creation code
+		host-act-created
+	]
+	[
+		ifelse (host-state = "learning")
+		[
+			;learning code
+			host-act-learning
+		]
+		[
+			ifelse (host-state = "maturity")
+			[
+				;maturity code
+				host-act-mature
+			]
+			[
+				ifelse (host-state = "destruction")
+				[
+					;destruction code
+					host-act-destroyed
+				]
+				[
+					;everything else
+				]
+			]
+		]
+	]
+end
+
+to host-act-created
+	;visuals
+	set color yellow
+	set shape "bird"
+	;logic
+	set host-timer 0
+	set host-state "learning"
+end
+
+to host-act-learning
+	;visuals
+	;logic
+	ifelse (host-timer < host-learning-time)
+	[
+		set host-timer (host-timer + 1)
+		set host-state "learning"
+		ask nest-host-link-neighbors
+		[
+			set nest-timer 0
+		]
+	]
+	[
+		set host-timer 0
+		set host-state "maturity"
+		;learn type of nest
+		host-learn-nest-type
+	]
+end
+
+to host-act-mature
+	;visuals
+	;logic
+	ifelse (host-timer < host-maturity-time)
+	[
+		set host-timer (host-timer + 1)
+		set host-state "maturity"
+		ifelse ((host-timer mod host-reproduction-cycle = 0) and (host-parent? = false))
+		[
+			host-abandon-old-nest
+			host-create-nest
+			host-mark-nest
+			host-lay-egg
+			host-learn-egg-type
+			set host-parent? true
+		]
+		[
+			ifelse (host-parent? = true)
+			[
+				ifelse ([ nest-current-number-of-eggs ] of nest reduce sentence host-my-nest-belief > 0)
+				[
+					host-destroy-parasite
+					set color pink
+				]
+				[
+					set color yellow
+					set host-parent? false
+				]
+			]
+			[
+				host-random-walk
+			]
+		]
+		;tolerance changes with every tick
+		if (rw-host-tolerance-switch)
+		[
+			rw-host-tolerance
+		]
+	]
+	[
+		set host-timer 0
+		set host-state "destruction"
+	]
+end
+
+to host-act-destroyed
+	;visuals
+	;logic
+	ifelse (host-timer < host-death-time)
+	[
+		set host-timer (host-timer + 1)
+		set host-state "destruction"
+		;death walk
+		if (host-step-size > 0)
+		[
+			set host-step-size (host-step-size - 1)
+		]
+		if (host-steering-amount > 0)
+		[
+			set host-steering-amount (host-steering-amount - 1)
+		]
+		host-random-walk
+	]
+	[
+		die
+	]
+end
+
+to host-random-walk
+	rt floor random (host-steering-amount / 2)
+	lt floor random (host-steering-amount / 2)
+	fd host-step-size
+end
+
+to host-abandon-old-nest
+	ask my-nest-host-links
+	[
+		die
+	]
+end
+
+to host-create-nest
+	;mutate nest belief to simulate memory errors
+	host-nest-type-belief-mutate
+	;prepare nest
+	let my-nest-type-belief host-my-nest-type-belief
+	let my-nest-occupation-time host-my-nest-occupation-time-belief
+	let my-nest-deterioration-time host-my-nest-deterioration-time-belief
+	hatch-nests 1
+	[
+		set nest-state "creation"
+		set shape "leaf"
+		set color brown
+		set nest-type my-nest-type-belief
+		set nest-occupation-time my-nest-occupation-time
+		set nest-deterioration-time my-nest-deterioration-time
+		create-nest-host-link-with myself
+		[
+			hide-link
+		]
+	]
+end
+
+to host-mark-nest
+	set host-my-nest-belief [ who ] of nest-host-link-neighbors
+end
+
+to host-lay-egg
+	;mutate
+	host-egg-mutate
+	;prepare egg
+	let my-egg-type host-egg-type
+	let my-egg-incubation-time host-egg-incubation-time
+	let my-egg-host-learning-time host-learning-time
+	let my-egg-host-maturity-time host-maturity-time
+	let my-egg-host-death-time host-death-time
+	let my-egg-host-reproduction-cycle host-reproduction-cycle
+	let my-egg-host-step-size host-step-size
+	let my-egg-host-steering-amount host-steering-amount
+	let my-egg-host-tolerance host-tolerance
+	let egg-owner self
+	;lay the egg
+	ask nest-host-link-neighbors
+	[
+		hatch-eggs 1
+		[
+			set egg-state "creation"
+			set shape "egg"
+			set color white
+			set egg-type my-egg-type
+			set egg-incubation-time my-egg-incubation-time
+			set egg-host-learning-time my-egg-host-learning-time
+			set egg-host-maturity-time my-egg-host-maturity-time
+			set egg-host-death-time my-egg-host-death-time
+			set egg-host-reproduction-cycle my-egg-host-reproduction-cycle
+			set egg-host-step-size my-egg-host-step-size
+			set egg-host-steering-amount my-egg-host-steering-amount
+			set egg-host-tolerance my-egg-host-tolerance
+			create-nest-egg-link-with myself
+			[
+				hide-link
+			]
+			create-host-egg-link-with egg-owner
+			[
+				hide-link
+			]
+		]
+	]
+end
+
+to host-learn-nest-type
+	let my-nest-type-belief reduce sentence ([ nest-type ] of nest-host-link-neighbors)
+	let my-nest-occupation-time-belief first ([ nest-deterioration-time ] of nest-host-link-neighbors)
+	let my-nest-deterioration-time-belief first ([ nest-occupation-time ] of nest-host-link-neighbors)
+	set host-my-nest-type-belief my-nest-type-belief
+	set host-my-nest-occupation-time-belief my-nest-occupation-time-belief
+	set host-my-nest-deterioration-time-belief my-nest-deterioration-time-belief
+end
+
+to host-learn-egg-type
+	ask nest-host-link-neighbors
+	[
+		let my-egg-type-belief reduce sentence ([ egg-type ] of nest-egg-link-neighbors)
+		let my-egg-incubation-time-belief first ([ egg-incubation-time ] of nest-egg-link-neighbors)
+		ask myself
+		[
+			set host-my-egg-type-belief my-egg-type-belief
+			set host-my-egg-incubation-time-belief my-egg-incubation-time-belief
+		]
+	]
+end
+
+to host-destroy-parasite
+	let my-tolerance host-tolerance
+	let my-egg-type-belief host-my-egg-type-belief
+	ask nest-host-link-neighbors
+	[
+		if (not empty? ([ egg-type ] of nest-egg-link-neighbors))
+		[
+			let apparent-egg-type reduce sentence ([ egg-type ] of nest-egg-link-neighbors)
+			ifelse ((host-compare-similar apparent-egg-type my-egg-type-belief my-tolerance) = false)
+			[
+				ask nest-egg-link-neighbors
+				[
+					set color red
+					set egg-state "destruction"
+				]
+			]
+			[
+				ask nest-egg-link-neighbors
+				[
+					set color blue
+				]
+			]
+		]
+	]
+end
+
+to host-egg-mutate
+	;mutate egg type
+	if (rw-host-egg-type-switch)
+	[
+		set host-egg-type reduce sentence (map [ifelse-value (random-float 1.0 < var-mutation-chance) [1 - ?] [?]] host-egg-type)
+	]
+	;mutate egg incubation time
+	if (rw-host-egg-incubation-time-switch)
+	[
+		ifelse (random-float 1.0 < var-mutation-chance)
+		[
+			ifelse (host-egg-incubation-time > 0)
+			[
+				set host-egg-incubation-time (host-egg-incubation-time + (one-of [1 -1]))
+			]
+			[
+				set host-egg-incubation-time 1
+			]
+		]
+		[
+			;do nothing
+		]
+	]
+	;mutate host maturity time
+	if (rw-host-maturity-time-switch)
+	[
+		ifelse (random-float 1.0 < var-mutation-chance)
+		[
+			ifelse (host-maturity-time > 0)
+			[
+				set host-maturity-time (host-maturity-time + (one-of [1 -1]))
+			]
+			[
+				set host-maturity-time 1
+			]
+		]
+		[
+			;do nothing
+		]
+	]
+	;mutate host reproduction cycle
+	if (rw-host-reproduction-cycle-switch)
+	[
+		ifelse (random-float 1.0 < var-mutation-chance)
+		[
+			ifelse (host-reproduction-cycle >= 2)
+			[
+				set host-reproduction-cycle (host-reproduction-cycle + one-of [1 -1])
+			]
+			[
+				set host-reproduction-cycle 2
+			]
+		]
+		[
+			;do nothing
+		]
+	]
+end
+
+to host-nest-type-belief-mutate
+	if (rw-host-nest-type-belief-switch)
+	[
+		set host-my-nest-type-belief reduce sentence (map [ifelse-value (random-float 1.0 < var-mutation-chance) [1 - ?] [?]] host-my-nest-type-belief)
+	]
+end
+
+to rw-host-tolerance
+	ifelse (random-float 1.0 < var-mutation-chance)
+	[
+		ifelse (host-tolerance > 0 and host-tolerance <= length host-egg-type)
+		[
+			set host-tolerance (host-tolerance + (one-of [1 -1]))
+		]
+		[
+			ifelse (host-tolerance <= 0)
+			[
+				set host-tolerance 1
+			]
+			[
+				set host-tolerance (length host-egg-type)
+			]
+		]
+	]
+	[
+		;do nothing
+	]
+end
+
+to-report host-compare-similar [item1 belief1 tolerance]
+	ifelse ((host-hamming item1 belief1) <= tolerance)
+	[
+		report true
+	]
+	[
+		report false
+	]
+end
+
+to-report host-hamming [item1 item2]
+	report (length remove true (map [?1 = ?2] item1 item2))
+end
+
+to-report host-diversity
+	let host-distances []
+	ask hosts
+	[
+		let my-egg-type host-egg-type
+		ask hosts with [ self > myself ]
+		[
+			set host-distances fput (host-hamming host-egg-type my-egg-type) host-distances
+		]
+	]
+	let max-possible-host-distance-sum floor (count hosts * count hosts / 4)
+	let diversity (sum host-distances) / max-possible-host-distance-sum
+	report diversity
+end
